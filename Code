@@ -1,0 +1,133 @@
+import os
+import numpy as np
+import pandas as pd
+import kagglehub
+
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# =========================================================
+# 1. DOWNLOAD & LOAD DATASET
+# =========================================================
+path = kagglehub.dataset_download("utathya/electricity-consumption")
+print("Path dataset:", path)
+
+df = pd.read_csv(os.path.join(path, "train.csv"))
+
+# =========================================================
+# 2. AMBIL 100 DATA SAJA
+# =========================================================
+df = df.dropna().head(100)
+print("\nJumlah data yang digunakan:", len(df))
+
+# =========================================================
+# 3. ENCODING DATA KATEGORIK (var1 & var2)
+# =========================================================
+le_var1 = LabelEncoder()
+le_var2 = LabelEncoder()
+
+df['var1'] = le_var1.fit_transform(df['var1'])
+df['var2'] = le_var2.fit_transform(df['var2'])
+
+# =========================================================
+# 4. PILIH FITUR NUMERIK (BUANG ID & DATETIME)
+# =========================================================
+fitur = [
+    'temperature',
+    'var1',
+    'pressure',
+    'windspeed',
+    'var2',
+    'electricity_consumption'
+]
+
+X = df[fitur]
+
+print("\nFitur yang digunakan:")
+print(X.columns.tolist())
+
+# =========================================================
+# 5. NORMALISASI DATA
+# =========================================================
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# =========================================================
+# 6. K-MEANS CLUSTERING
+# =========================================================
+k = 3
+kmeans = KMeans(n_clusters=k, random_state=42)
+df['Cluster'] = kmeans.fit_predict(X_scaled)
+
+# =========================================================
+# 7. MAKNA CLUSTER (RENDAH / SEDANG / TINGGI)
+# =========================================================
+cluster_label = {
+    0: 'Konsumsi Listrik Rendah',
+    1: 'Konsumsi Listrik Sedang',
+    2: 'Konsumsi Listrik Tinggi'
+}
+
+df['Keterangan_Cluster'] = df['Cluster'].map(cluster_label)
+
+print("\n=== MAKNA SETIAP CLUSTER (DITETAPKAN) ===")
+for k_, v_ in cluster_label.items():
+    print(f"Cluster {k_} : {v_}")
+
+# =========================================================
+# 8. SPLIT DATA 50 TRAIN - 50 TEST
+# =========================================================
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled,
+    df['Cluster'],
+    test_size=0.5,
+    random_state=42,
+    shuffle=True
+)
+
+# =========================================================
+# 9. KNN (K = 5)
+# =========================================================
+K = 5
+knn = KNeighborsClassifier(
+    n_neighbors=5,
+    weights='distance'
+)
+knn.fit(X_train, y_train)
+
+y_pred_knn = knn.predict(X_test)
+akurasi_knn = accuracy_score(y_test, y_pred_knn)
+
+print("\nAkurasi KNN (K = {}): {:.2f}%".format(K, akurasi_knn * 100))
+
+# =========================================================
+# 10. INPUT DATA BARU DENGAN SATUAN
+# =========================================================
+print("\n=== INPUT DATA KONSUMSI LISTRIK BARU ===")
+
+units = {
+    'temperature': '°C',
+    'var1': '(nilai relatif)',
+    'pressure': 'hPa',
+    'windspeed': 'm/s',
+    'var2': '(nilai relatif)',
+    'electricity_consumption': 'kWh'
+}
+
+data_baru = []
+for col in fitur:
+    nilai = float(input(f"Masukkan nilai {col} {units[col]}: "))
+    data_baru.append(nilai)
+
+data_baru = np.array(data_baru).reshape(1, -1)
+data_baru_scaled = scaler.transform(data_baru)
+
+cluster_knn = knn.predict(data_baru_scaled)[0]
+
+print("\n=== HASIL PREDIKSI ===")
+print(f"Cluster (KNN) : {cluster_knn} → {cluster_label[cluster_knn]}")
+
+print("\nProgram selesai.")
