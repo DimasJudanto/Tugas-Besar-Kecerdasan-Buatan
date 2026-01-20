@@ -1,0 +1,1 @@
+Tugas Besar Kecerdasan Buatan tentang Mengenali dan mengklasifikasi tingkat penggunaan energi menggunakan Naive Bayes dan KNN, serta mengelompokkan pola konsumsi dengan K-Means, sehingga pengguna dapat lebih mudah memahami dan mengontrol penggunaan energi secara efisien
